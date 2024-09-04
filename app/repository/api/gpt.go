@@ -26,7 +26,7 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 
 	systemRequest := domainRepo.AskContent{
 		Role: "system",
-		Content: "answer briefly. don't make long response. return smaller token usage as efficient as possible",
+		Content: "answer briefly. don't make long response. return smaller token usage as efficient as possible. min output is 50 words",
 	}
 
 	askContent = append([]domainRepo.AskContent{

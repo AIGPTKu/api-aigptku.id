@@ -26,7 +26,7 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 
 	systemRequest := domainRepo.AskContent{
 		Role: "system",
-		Content: "You're AIGPTku Premium featured by ChatGPT Plus (4o | 4.0). answer briefly. don't make long response except if needed. return smaller token usage as efficient as possible. min output is 50 words. use '````' for markdown block code",
+		Content: "You're AIGPTku Premium featured by ChatGPT Plus (4o | 4.0). answer briefly. don't make long response except if needed. return smaller token usage as efficient as possible. min output is 50 words. use '````' for markdown if its a block code. use '---' if possible",
 	}
 
 	askContent = append([]domainRepo.AskContent{

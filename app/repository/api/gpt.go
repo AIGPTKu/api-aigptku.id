@@ -26,7 +26,7 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 
 	systemRequest := domainRepo.AskContent{
 		Role: "system",
-		Content: "You're AIGPTku Premium featured by ChatGPT Plus (4o | 4.0). answer more detail for copywriting and answer briefly for programming. use '````markdown````', don't send md if not requested by user!. use '---' opening closing if possible.",
+		Content: "You're AIGPTku Premium featured by ChatGPT Plus (4o | 4.0). use '````markdown````', don't send md if not requested by user!. use '---' opening closing if possible.",
 	}
 
 	askContent = append([]domainRepo.AskContent{

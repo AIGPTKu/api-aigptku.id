@@ -10,24 +10,22 @@ import (
 	"time"
 
 	domainCt "github.com/AIGPTku/api-aigptku.id/app/controller/domain"
-	domainUc "github.com/AIGPTku/api-aigptku.id/app/usecase/domain"
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
 	"github.com/valyala/fasthttp"
 )
 
-func (r *restHandler) ask(c *fiber.Ctx) (err error) {
+func (r *restHandler) generateImage(c *fiber.Ctx) (err error) {
 
 	var (
-		req = domainCt.RequestAsk{}
-		res = domainCt.ResponseAsk{}
-		funcCall = make(chan domainCt.FuncCall)
+		req = domainCt.RequestImageGenerate{}
+		res = domainCt.ResponseImageGenerate{}
 		content = make(chan string)
+		image = make(chan string)
 		finish = make(chan bool)
 	)
 
 	c.BodyParser(&req)
-	fmt.Println(req)
 
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
@@ -44,13 +42,13 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 					keepAliveTickler.Stop()
 					loop = false
 				}
-			case fc := <- funcCall:
+			case img := <-image:
 				var buf bytes.Buffer
-				enc := json.NewEncoder(&buf)
-			
-				res.FuncCall = fc
+                enc := json.NewEncoder(&buf)
+
+				res.ImageURL = img
 				res.Content = ""
-			
+
 				err := enc.Encode(res)
 				if err != nil {
 					return
@@ -59,7 +57,7 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 				sb := strings.Builder{}
 				sb.WriteString(fmt.Sprintf("data: %v\n", buf.String()))
 	
-				fmt.Println(fc)
+				fmt.Println(img)
 
 				_, err = fmt.Fprint(w, sb.String())
 				if err != nil {
@@ -73,6 +71,7 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 				var buf bytes.Buffer
 				enc := json.NewEncoder(&buf)
 			
+				res.ImageURL = ""
 				res.Content = ev
 			
 				err := enc.Encode(res)
@@ -129,13 +128,7 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 	}
 
 	if engine == "gpt" {
-		go r.uc.gpt.AskGPT(c.UserContext(), domainUc.RequestAsk{
-			FuncCall: funcCall,
-			Result: content,
-            Finish: finish,
-            AskContent: req.Contents,
-            UseDefaultSystem: true,
-		})
+		go r.uc.gpt.GenerateImage(c.UserContext(), content, image, finish, req.Prompt)
 	} else if engine == "gemini" {
 		// go r.uc.gemini.AskGPT(c.UserContext)	
 	}

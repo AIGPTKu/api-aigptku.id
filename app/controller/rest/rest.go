@@ -34,4 +34,5 @@ func (r *restHandler) RegisterRoute() {
 	v1 := r.app.Group("/v1")
 
 	v1.Post("/generative", r.ask)
+	v1.Post("/generative/image", r.generateImage)
 }

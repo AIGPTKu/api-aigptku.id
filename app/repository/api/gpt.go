@@ -12,16 +12,17 @@ import (
 	"strings"
 	"time"
 
+	domainCt "github.com/AIGPTku/api-aigptku.id/app/controller/domain"
 	"github.com/AIGPTku/api-aigptku.id/app/model"
 	domainRepo "github.com/AIGPTku/api-aigptku.id/app/repository/domain"
 )
 
-func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool, askContent []domainRepo.AskContent) {
-	if len(askContent) == 0 {
-		finish <- true
+func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
+	if len(ask.AskContent) == 0 {
+		ask.Finish <- true
 		return 
-	} else if len(askContent) > 3 {
-		askContent = askContent[len(askContent)-3:]
+	} else if len(ask.AskContent) > 10 {
+		ask.AskContent = ask.AskContent[len(ask.AskContent)-10:]
 	}
 
 	systemRequest := domainRepo.AskContent{
@@ -29,21 +30,63 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 		Content: "You're AIGPTku Premium featured by ChatGPT Plus (4o | 4.0). use '````markdown````', don't send md if not requested by user!. use '---' opening closing if possible.",
 	}
 
-	askContent = append([]domainRepo.AskContent{
-		systemRequest,
-	}, askContent...)
+	if ask.UseDefaultSystem {
+		ask.AskContent = append([]domainRepo.AskContent{
+			systemRequest,
+		}, ask.AskContent...)
+	}
 
 	// URL of the third-party API providing the text/event-stream
 	url := "https://api.openai.com/v1/chat/completions"
 
-	body, _ := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"model": "gpt-4o-mini",
 		"stream": true,
 		"stream_options": map[string]bool{
 			"include_usage": true,
 		},
-		"messages": askContent,
-	})
+		"messages": ask.AskContent,
+	}
+
+	if ask.UseFunction {
+		payload["functions"] = []map[string]any{
+			{
+				"name": "get_web_search",
+				"description": "Search the web for a query",
+				"parameters": map[string]any{
+					"type": "object",
+					"properties": map[string]any {
+						"query": map[string]any{
+							"type": "string",
+							"description": "The search query",
+						},
+					},
+					"required": []string{
+						"query",
+					},
+				},
+			},
+			{
+				"name": "image_generate",
+				"description": "Generate image based on prompt",
+				"parameters": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"prompt": map[string]any{
+							"type": "string",
+							"description": "The generate prompt. must using user language!",
+						},
+					},
+					"required": []string{
+						"prompt",
+					},
+				},
+			},
+		}
+		payload["function_call"] = "auto"
+	}
+
+	body, _ := json.Marshal(payload)
 
 	// Make a GET request to the third-party API
 	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
@@ -72,8 +115,8 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 		body, _ := io.ReadAll(resp.Body)
 		log.Println(string(body))
 
-		res <- "Maaf terjadi kesalahan. bisa ulangi lagi pertanyaannya?"
-		finish <- true
+		ask.Result <- "Maaf terjadi kesalahan. bisa ulangi lagi pertanyaannya?"
+		ask.Finish <- true
 		return 
 	}
 
@@ -84,6 +127,10 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 		"role": "assistant",
 		"content": "",
 	}
+
+	isFunctionCall := false
+	functionCallName := ""
+	functionCallArgumentsStr := ""
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -104,6 +151,18 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 
 		// Extract and process the content
 		if len(response.Choices) > 0 {
+			if isFunctionCall {
+				functionCallArgumentsStr += response.Choices[0].Delta.FunctionCall.Arguments
+				continue
+			}
+
+			funcCall := response.Choices[0].Delta.FunctionCall.Name
+			if funcCall != "" {
+				isFunctionCall = true
+				functionCallName = funcCall
+				continue
+			}
+
 			content := response.Choices[0].Delta.Content	
 			if content == "" {
 				continue
@@ -112,7 +171,7 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 
 			// send chan
 			time.Sleep(25 * time.Millisecond)
-			res <- content
+			ask.Result <- content
 			assistantResponse["content"] += content
 		}
 
@@ -127,6 +186,20 @@ func (a *repoApi) AskGPT(ctx context.Context, res chan string, finish chan bool,
 		return
 	}
 
+	if isFunctionCall {
+		arguments := domainCt.Arguments{}
+
+		err = json.Unmarshal([]byte(functionCallArgumentsStr), &arguments)
+		if err != nil {
+			log.Println("Error unmarshalling arguments")
+		}
+
+		ask.FuncCall <- domainCt.FuncCall{
+			Name: functionCallName,
+			Arguments: arguments,
+		}
+	}
+
 	fmt.Print("\n\n")
-	finish <- true
+	ask.Finish <- true
 }

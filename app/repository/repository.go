@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	domainCt "github.com/AIGPTku/api-aigptku.id/app/controller/domain"
+	domainRepo "github.com/AIGPTku/api-aigptku.id/app/repository/domain"
 )
 
 type MysqlInterface interface {
@@ -13,5 +13,6 @@ type MongoInterface interface {
 }
 
 type ApiInterface interface {
-	AskGPT(ctx context.Context, res chan string, finish chan bool, askContent []domainCt.AskContent)
+	AskGPT(ctx context.Context, req domainRepo.RequestAsk)
+	GenerateImage(ctx context.Context, content, image chan string, finish chan bool, prompt string)
 }

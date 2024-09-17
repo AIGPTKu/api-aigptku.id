@@ -4,6 +4,10 @@ package model
 type GPTChoice struct {
     Delta struct {
         Content string `json:"content"`
+		FunctionCall struct {
+			Name string `json:"name"`
+			Arguments string `json:"arguments"`
+		} `json:"function_call"`
     } `json:"delta"`
 }
 

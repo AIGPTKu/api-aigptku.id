@@ -51,8 +51,8 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 	if ask.UseFunction {
 		payload["functions"] = []map[string]any{
 			{
-				"name": "get_web_search",
-				"description": "Search the web for a query",
+				"name": "web_search",
+				"description": "Search using web",
 				"parameters": map[string]any{
 					"type": "object",
 					"properties": map[string]any {

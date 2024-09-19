@@ -27,7 +27,7 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 
 	systemRequest := domainRepo.AskContent{
 		Role: "system",
-		Content: "You're AIGPTku Premium featured by ChatGPT Plus (4o | 4.0). use '````markdown````', don't send md if not requested by user!. use '---' opening closing if possible.",
+		Content: "You're aigptku.id or AIGPTku can handle upload: file, images or pdf. use '````markdown````', don't send md if not requested by user!. use '---' opening closing if possible.",
 	}
 
 	if ask.UseDefaultSystem {
@@ -47,9 +47,25 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 		},
 		"messages": ask.AskContent,
 	}
-
+	
 	if ask.UseFunction {
 		payload["functions"] = []map[string]any{
+			{
+				"name": "about_me",
+				"description": "for tell user information about this app",
+				"parameters": map[string]any{
+					"type": "object",
+					"properties": map[string]any {
+						"ask": map[string]any{
+							"type": "string",
+							"description": "The question from user",
+						},
+					},
+					"required": []string{
+						"ask",
+					},
+				},
+			},
 			{
 				"name": "web_search",
 				"description": "Search using web",
@@ -87,14 +103,14 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 	}
 
 	body, _ := json.Marshal(payload)
-
+	
 	// Make a GET request to the third-party API
 	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
 	if err != nil {
-		log.Println("Error creating request")
+		log.Println("Error creating request", err)
 		return 
 	}
-
+	
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer " + a.gptApiKey) // Replace with actual token
@@ -119,7 +135,7 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 		ask.Finish <- true
 		return 
 	}
-
+	
 	// Create a scanner to read the stream
 	scanner := bufio.NewScanner(resp.Body)
 
@@ -198,6 +214,9 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 			Name: functionCallName,
 			Arguments: arguments,
 		}
+
+		fmt.Print("\n\n")
+		return
 	}
 
 	fmt.Print("\n\n")

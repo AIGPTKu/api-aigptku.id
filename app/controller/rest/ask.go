@@ -34,6 +34,8 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 	c.Set("Connection", "keep-alive")
 	c.Set("Transfer-Encoding", "chunked")
 
+	ctx := c.UserContext()
+
 	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
 		keepAliveTickler := time.NewTicker(15 * time.Second)
 
@@ -47,8 +49,15 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 			case fc := <- funcCall:
 				var buf bytes.Buffer
 				enc := json.NewEncoder(&buf)
-			
-				res.FuncCall = fc
+
+				fmt.Println(fc)
+
+				if fc.Name != "web_search" && fc.Name != "image_generate" {
+					go r.uc.gpt.HandleFunctionText(ctx, content, finish, fc)
+					continue
+				}
+		
+				res.FuncCall = &fc
 				res.Content = ""
 			
 				err := enc.Encode(res)
@@ -58,13 +67,14 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 
 				sb := strings.Builder{}
 				sb.WriteString(fmt.Sprintf("data: %v\n", buf.String()))
-	
-				fmt.Println(fc)
 
 				_, err = fmt.Fprint(w, sb.String())
 				if err != nil {
 					log.Println(err)
 				}
+				time.AfterFunc(100 * time.Millisecond, func() {
+					finish <- true
+				})
 				err = w.Flush()
 				if err != nil {
 					log.Println(err)
@@ -129,7 +139,7 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 	}
 
 	if engine == "gpt" {
-		go r.uc.gpt.AskGPT(c.UserContext(), domainUc.RequestAsk{
+		go r.uc.gpt.AskGPT(ctx, domainUc.RequestAsk{
 			FuncCall: funcCall,
 			Result: content,
             Finish: finish,

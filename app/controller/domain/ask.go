@@ -13,6 +13,7 @@ type FuncCall struct {
 type Arguments struct {
 	Query string `json:"query,omitempty"`
 	Prompt string `json:"prompt,omitempty"`
+	Ask string `json:"ask,omitempty"`
 }
 
 type RequestAsk struct {
@@ -22,5 +23,5 @@ type RequestAsk struct {
 
 type ResponseAsk struct {
 	Content string `json:"content"`
-	FuncCall FuncCall `json:"function_call"`
+	FuncCall *FuncCall `json:"function_call,omitempty"`
 }

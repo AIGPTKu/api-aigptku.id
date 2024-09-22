@@ -127,8 +127,22 @@ func (r *restHandler) generateImage(c *fiber.Ctx) (err error) {
 		engine = "gpt"
 	}
 
+	disableDallE := viper.GetBool("DALL_E_DISABLE")
+
 	if engine == "gpt" {
-		go r.uc.gpt.GenerateImage(c.UserContext(), content, image, finish, req.Prompt)
+		if disableDallE {
+			go func ()  {
+				time.Sleep(1000 * time.Millisecond)
+				text_split := strings.Split("Mohon maaf, untuk sementara kami sedang membatasi untuk generate gambar, kamu bisa mencoba lagi nanti.", " ")
+				for _, v := range text_split {
+					content <- v + " "
+					time.Sleep(25 * time.Millisecond)
+				}
+				finish <- true
+			}()
+		} else {
+			go r.uc.gpt.GenerateImage(c.UserContext(), content, image, finish, req.Prompt)
+		}
 	} else if engine == "gemini" {
 		// go r.uc.gemini.AskGPT(c.UserContext)	
 	}

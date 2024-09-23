@@ -3,6 +3,7 @@ package domain
 type AskContent struct {
 	Role string `json:"role"`
 	Content string `json:"content"`
+	File string `json:"file"`
 }
 
 type FuncCall struct {

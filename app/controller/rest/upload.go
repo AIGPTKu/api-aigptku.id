@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -14,6 +15,7 @@ func (r *restHandler) uploadFileTemp(c *fiber.Ctx) (err error) {
 	// Get the file from the form
 	file, err := c.FormFile("file")
 	if err != nil {
+		fmt.Println(err)
 		return c.Status(fiber.StatusBadRequest).SendString("Cannot get the file")
 	}
 

@@ -15,6 +15,7 @@ import (
 	domainCt "github.com/AIGPTku/api-aigptku.id/app/controller/domain"
 	"github.com/AIGPTku/api-aigptku.id/app/model"
 	domainRepo "github.com/AIGPTku/api-aigptku.id/app/repository/domain"
+	"github.com/gofiber/fiber/v2"
 )
 
 func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
@@ -36,6 +37,34 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 		}, ask.AskContent...)
 	}
 
+	messages := []fiber.Map{}
+	for _, ask := range ask.AskContent {
+		if ask.File != "" {
+			messages = append(messages, fiber.Map{
+				"role": ask.Role,
+				"content": []fiber.Map{
+					{
+						"type": "text",
+						"text": ask.Content,
+					},
+					{
+						"type": "image_url",
+						"image_url": fiber.Map{
+							"url": ask.File,
+							"detail": "low",
+						},
+					},
+				},
+			})
+			continue
+		}
+
+		messages = append(messages, fiber.Map{
+			"role": ask.Role,
+            "content": ask.Content,
+		})
+	}
+
 	// URL of the third-party API providing the text/event-stream
 	url := "https://api.openai.com/v1/chat/completions"
 
@@ -45,7 +74,7 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 		"stream_options": map[string]bool{
 			"include_usage": true,
 		},
-		"messages": ask.AskContent,
+		"messages": messages,
 	}
 	
 	if ask.UseFunction {

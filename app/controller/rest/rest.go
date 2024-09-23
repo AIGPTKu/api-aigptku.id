@@ -35,4 +35,5 @@ func (r *restHandler) RegisterRoute() {
 
 	v1.Post("/generative", r.ask)
 	v1.Post("/generative/image", r.generateImage)
+	v1.Post("/upload/temp", r.uploadFileTemp)
 }

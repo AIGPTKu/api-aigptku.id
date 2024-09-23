@@ -2,3 +2,4 @@ db
 test.go
 docker-compose.yml
 .env
+assets/

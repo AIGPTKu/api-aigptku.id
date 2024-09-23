@@ -47,6 +47,8 @@ func main() {
 
 	app.Use(middleware.ExecutionTimeMiddleware(dbMysqlMaster, viper.GetString("ENVIRONMENT"), viper.GetString("SERVICE")))
 
+	app.Static("/files", "assets/")
+
 	restConfig := &rest.InitRestHandler{}
 
 	restConfig.Mysql.Master = dbMysqlMaster

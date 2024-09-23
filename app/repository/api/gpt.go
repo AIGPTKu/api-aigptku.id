@@ -123,6 +123,14 @@ func (a *repoApi) AskGPT(ctx context.Context, ask domainRepo.RequestAsk) {
 		return
 	}
 	defer resp.Body.Close()
+	go func (){
+		switch {
+		case <- ask.Abort:
+			{
+				resp.Body.Close()
+			}
+		}
+	}()
 
 	// Check if the response is a text/event-stream
 	if !strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {

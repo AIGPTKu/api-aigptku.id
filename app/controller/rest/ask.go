@@ -24,6 +24,7 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 		funcCall = make(chan domainCt.FuncCall)
 		content = make(chan string)
 		finish = make(chan bool)
+		abort = make(chan bool)
 	)
 
 	c.BodyParser(&req)
@@ -34,9 +35,9 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 	c.Set("Connection", "keep-alive")
 	c.Set("Transfer-Encoding", "chunked")
 
-	ctx := c.UserContext()
+	ctx := c.Context()
 
-	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+	ctx.SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
 		keepAliveTickler := time.NewTicker(15 * time.Second)
 
 		for loop := true; loop; {
@@ -45,6 +46,10 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 				if stop {
 					keepAliveTickler.Stop()
 					loop = false
+					close(funcCall)
+					close(content)
+					close(finish)
+					close(abort)
 				}
 			case fc := <- funcCall:
 				var buf bytes.Buffer
@@ -53,7 +58,7 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 				fmt.Println(fc)
 
 				if fc.Name != "web_search" && fc.Name != "image_generate" {
-					go r.uc.gpt.HandleFunctionText(ctx, content, finish, fc)
+					go r.uc.gpt.HandleFunctionText(ctx, content, finish, abort, fc)
 					continue
 				}
 		
@@ -70,14 +75,28 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 
 				_, err = fmt.Fprint(w, sb.String())
 				if err != nil {
-					log.Println(err)
+					if err.Error() == "connection closed" {
+						abort <- true
+						fmt.Print("\nClosed Connection\n")
+						continue
+					}
+
+					log.Println("write", err)
 				}
+
 				time.AfterFunc(100 * time.Millisecond, func() {
 					finish <- true
 				})
+
 				err = w.Flush()
 				if err != nil {
-					log.Println(err)
+					if err.Error() == "connection closed" {
+						abort <- true
+						fmt.Print("\nClosed Connection\n")
+						continue
+					}
+
+					log.Println("flush", err)
 				}
 			case ev := <-content:
 				var buf bytes.Buffer
@@ -92,17 +111,27 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 
 				sb := strings.Builder{}
 				sb.WriteString(fmt.Sprintf("data: %v\n", buf.String()))
-	
-				fmt.Print(ev)
 
 				_, err = fmt.Fprint(w, sb.String())
 				if err != nil {
-					log.Println(err)
+					if err.Error() == "connection closed" {
+						abort <- true
+						fmt.Print("\nClosed Connection\n")
+						continue
+					}
+					log.Println("write", err)
 				}
 				err = w.Flush()
 				if err != nil {
-					log.Println(err)
+					if err.Error() == "connection closed" {
+						abort <- true
+						fmt.Print("\nClosed Connection\n")
+						continue
+					}
+
+					log.Println("flush", err)
 				}
+				fmt.Print(ev)
 			case <- keepAliveTickler.C:
 				var buf bytes.Buffer
 				enc := json.NewEncoder(&buf)
@@ -143,6 +172,7 @@ func (r *restHandler) ask(c *fiber.Ctx) (err error) {
 			FuncCall: funcCall,
 			Result: content,
             Finish: finish,
+			Abort: abort,
             AskContent: req.Contents,
             UseDefaultSystem: true,
 		})

@@ -35,7 +35,7 @@ type InitRequest struct {
 type GPTUsecase interface {
 	AskGPT(ctx context.Context, ask domainUc.RequestAsk)
 	GenerateImage(ctx context.Context, content, image chan string, finish chan bool, prompt string)
-	HandleFunctionText(ctx context.Context, content chan string, finish chan bool, f domainCt.FuncCall)
+	HandleFunctionText(ctx context.Context, content chan string, finish, abort chan bool, f domainCt.FuncCall)
 }
 
 type GeminiUsecase interface {

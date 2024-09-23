@@ -10,6 +10,7 @@ type RequestAsk struct {
 	FuncCall chan domainCt.FuncCall
 	Result chan string
 	Finish chan bool
+	Abort chan bool
 	AskContent []AskContent
 	UseDefaultSystem bool
 	UseFunction bool

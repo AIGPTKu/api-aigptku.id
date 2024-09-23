@@ -7,7 +7,7 @@ import (
 	domainRepo "github.com/AIGPTku/api-aigptku.id/app/repository/domain"
 )
 
-func (u *gptUsecase) HandleFunctionText(ctx context.Context, content chan string, finish chan bool, f domainCt.FuncCall) {
+func (u *gptUsecase) HandleFunctionText(ctx context.Context, content chan string, finish, abort chan bool, f domainCt.FuncCall) {
 	switch f.Name {
 	case "about_me":
 		{
@@ -15,6 +15,7 @@ func (u *gptUsecase) HandleFunctionText(ctx context.Context, content chan string
 				FuncCall: nil,
 				Result: content,
 				Finish: finish,
+				Abort: abort,
 				AskContent: []domainCt.AskContent{
 					{
 						Role: "system",
